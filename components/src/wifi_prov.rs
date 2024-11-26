@@ -186,6 +186,16 @@ impl<T: WiFiProvTransportTrait> WifiProvMgr<T> {
         None
     }
 
+    /// Clears the provisioned WiFi credentials stored on the device
+    /// If device has not been provisioned previously, this will not return any error
+    pub fn reset_provisioning(nvs_partition: NvsPartition) -> Result<(), Error> {
+        let mut nvs = Nvs::new(nvs_partition, WIFI_NAMESPACE)?;
+        nvs.remove(WIFI_SSID_KEY)?;
+        nvs.remove(WIFI_PASS_KEY)?;
+
+        Ok(())
+    }
+
     fn new_with_transport(
         wifi: WrappedInArcMutex<WifiMgr<'static>>,
         nvs_partition: NvsPartition,
