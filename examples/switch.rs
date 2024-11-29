@@ -4,10 +4,10 @@ use components::{
     wifi_prov::{WiFiProvMgrBle, WifiProvBleConfig},
 };
 use rainmaker::{
-    param::Param,
     device::{Device, DeviceType},
     error::RMakerError,
     node::Node,
+    param::Param,
     Rainmaker,
 };
 use serde_json::Value;
@@ -64,9 +64,21 @@ fn main() -> Result<(), RMakerError> {
     let mut prov_mgr = WiFiProvMgrBle::new(
         wifi_arc_mutex.clone(),
         prov_config,
-        nvs_partition,
+        nvs_partition.clone(),
         components::protocomm::ProtocommSecurity::new_sec1(None),
     )?;
+
+    #[cfg(target_os = "espidf")]
+    let mut btn = {
+        let peripherals = esp_idf_svc::hal::peripherals::Peripherals::take().unwrap();
+        examples::gpi_driver::GPIDriver::new(peripherals.pins.gpio9)?
+    };
+
+    #[cfg(target_os = "espidf")]
+    btn.set_tap_cb(Box::new(|| log::info!("button was pressed")));
+
+    #[cfg(target_os = "espidf")]
+    examples::reg_reset_trigger(&mut btn, nvs_partition);
 
     if let Some((ssid, password)) = prov_mgr.is_provisioned() {
         log::info!("Node already provisioned. Trying to connect");
@@ -98,6 +110,13 @@ fn main() -> Result<(), RMakerError> {
 
     // Inorder to prevent rmaker from drop
     loop {
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        #[cfg(target_os = "espidf")]
+        btn.poll();
+        #[cfg(target_os = "espidf")]
+        std::thread::sleep(std::time::Duration::from_millis(10)); // Lower delay for ESP to
+                                                                  // poll button state
+                                                                  // responsively
+
+        std::thread::sleep(std::time::Duration::from_secs(10));
     }
 }

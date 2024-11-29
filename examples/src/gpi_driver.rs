@@ -158,6 +158,8 @@ where
                 }
             }
         }
+        
+        log::info!("updating {} {} @ {}", title, interval, curr_interval);
 
         if interval > curr_interval {
             self.next_press_title = title;
