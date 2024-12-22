@@ -34,6 +34,7 @@ simple_logger = "4.3.3"
 esp-idf-svc = { version = "0.49.1", default-features = false, features = [
   "alloc",
 ] }
+embedded-svc = "0.28.0"
 
 
 [[package.metadata.esp-idf-sys.extra-components]]
