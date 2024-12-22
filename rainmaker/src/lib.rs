@@ -12,14 +12,16 @@ pub mod factory;
 pub mod node;
 pub mod param;
 pub(crate) mod proto;
+pub(crate) mod rmaker_mqtt;
 pub(crate) mod utils;
 
 mod constants;
-mod rmaker_mqtt;
+pub mod ota;
 
 use constants::*;
 use error::RmakerError;
 use node::Node;
+use ota::RmakerOta;
 use proto::esp_rmaker_user_mapping::*;
 use quick_protobuf::{MessageWrite, Writer};
 // expose rainmaker_components crate for use in downstream crates
@@ -116,6 +118,8 @@ impl Rainmaker {
         let params_local_init_topic =
             format!("node/{}/{}", node_id, NODE_PARAMS_LOCAL_INIT_TOPIC_SUFFIX);
         let remote_param_topic = format!("node/{}/{}", node_id, NODE_PARAMS_REMOTE_TOPIC_SUFFIX);
+        let otaurl_topic = format!("node/{}/{}", node_id, OTAURL_TOPC_SUFFIX);
+        let otafetch_topic = format!("node/{}/{}", node_id, OTAFETCH_TOPC_SUFFIX);
 
         match curr_node {
             Some(node) => {
@@ -131,7 +135,21 @@ impl Rainmaker {
                 thread::sleep(Duration::from_secs(1)); // wait for connection
                 rmaker_mqtt::subscribe(&remote_param_topic, move |msg| {
                     remote_params_callback(msg, &node)
-                })?
+                })?;
+
+                let rmaker_ota = RmakerOta::new(self.node_id.clone()).unwrap();
+                rmaker_ota.manage_rollback().unwrap();
+
+                rmaker_mqtt::subscribe(&otaurl_topic, move |msg| {
+                    ota::otafetch_callback(msg, &rmaker_ota)
+                })
+                .unwrap();
+
+                // fetch ota
+                rmaker_mqtt::publish(
+                    &otafetch_topic,
+                    format!("{{\"node_id\": \"{}\"}}", node_id).into_bytes(),
+                )?;
             }
             None => panic!("error while starting: node not registered"),
         }
