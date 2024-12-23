@@ -42,10 +42,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::param::Param;
-#[allow(unused)]
-use crate::report_params;
 
-pub(crate) type DeviceCbType = Box<dyn Fn(HashMap<String, Value>) + Send + Sync + 'static>;
+pub(crate) type DeviceCbType = Box<dyn Fn(HashMap<String, Value>, &Device) + Send + Sync + 'static>;
 
 #[derive(Serialize)]
 pub struct Device {
@@ -124,7 +122,7 @@ impl Device {
             return;
         };
 
-        cb(params);
+        cb(params, self);
     }
 }
 

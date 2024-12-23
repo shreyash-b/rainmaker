@@ -2,7 +2,10 @@ use anyhow::Result;
 use examples::{connect_wifi, initializse_logger};
 use rainmaker::components::persistent_storage::NvsPartition;
 use rainmaker::components::wifi::WifiMgr;
-use rainmaker::factory;
+use rainmaker::{
+    factory,
+    param::ParamValue
+};
 use rainmaker::{
     device::{Device, DeviceType},
     node::Node,
@@ -12,12 +15,12 @@ use rainmaker::{
 use serde_json::Value;
 use std::{
     collections::HashMap,
-    sync::{Arc, LazyLock, Mutex},
+    sync::{Arc, Mutex},
 };
 
+// Power, Hue, Saturation, Value
+const DEFAULT_LED_STATE:(bool, u32, u32, u32) = (true, 0, 100, 15);
 const DEVICE_NAME: &str = "LED";
-static LED_VALUES: LazyLock<Mutex<(bool, u32, u32, u32)>> =
-    LazyLock::new(|| Mutex::new((true, 0, 100, 20)));
 
 mod esp {
     #![cfg(target_os = "espidf")]
@@ -28,7 +31,6 @@ mod esp {
     use examples::ws2812::WS2812RMT;
     use rgb::RGB8;
 
-    // Power, Hue, Saturation, Value
     static LED_DRIVER: OnceLock<Mutex<WS2812RMT>> = OnceLock::new();
 
     fn hsv_to_rgb(h: u16, s: u8, v: u8) -> RGB8 {
@@ -94,12 +96,10 @@ mod esp {
 fn init_led_device() -> Device {
     let mut led_device = Device::new(DEVICE_NAME, DeviceType::Switch);
 
-    let default_values = LED_VALUES.lock().unwrap();
-
-    let power = Param::new_power("Power", default_values.0);
-    let hue = Param::new_hue("Hue", default_values.1);
-    let saturation = Param::new_satuation("Saturation", default_values.2);
-    let brightness = Param::new_brightness("Brightness", default_values.3);
+    let power = Param::new_power("Power", DEFAULT_LED_STATE.0);
+    let hue = Param::new_hue("Hue", DEFAULT_LED_STATE.1);
+    let saturation = Param::new_satuation("Saturation", DEFAULT_LED_STATE.2);
+    let brightness = Param::new_brightness("Brightness", DEFAULT_LED_STATE.3);
 
     led_device.add_param(power);
     led_device.add_param(brightness);
@@ -109,28 +109,55 @@ fn init_led_device() -> Device {
 
     led_device.register_callback(Box::new(led_cb));
     #[cfg(target_os = "espidf")]
-    esp::update_led_state(&default_values);
+    esp::update_led_state(&DEFAULT_LED_STATE);
 
     led_device
 }
 
-fn led_cb(params: HashMap<String, Value>) {
+fn led_cb(params: HashMap<String, Value>, device: &Device) {
     log::info!("Received update: {:?}", params);
 
-    let mut current_values = LED_VALUES.lock().unwrap();
+    let current_params = device.params();
+    let mut values = DEFAULT_LED_STATE;
+
+    for param in current_params {
+        match param.name() {
+            "Power" => {
+                if let ParamValue::Bool(power) = param.value() {
+                    values.0 = *power
+                }
+            }
+            "Hue" => {
+                if let ParamValue::Integer(hue) = param.value() {
+                    values.1 = *hue as u32
+                }
+            }
+            "Saturation" => {
+                if let ParamValue::Integer(sat) = param.value() {
+                    values.2 = *sat as u32
+                }
+            }
+            "Brightness" => {
+                if let ParamValue::Integer(brightness) = param.value() {
+                    values.3 = *brightness as u32
+                }
+            }
+            _ => {}
+        }
+    }
 
     for param in params.iter() {
         match param.0.as_str() {
-            "Power" => current_values.0 = param.1.as_bool().unwrap(),
-            "Hue" => current_values.1 = param.1.as_u64().unwrap() as u32,
-            "Saturation" => current_values.2 = param.1.as_u64().unwrap() as u32,
-            "Brightness" => current_values.3 = param.1.as_u64().unwrap() as u32,
+            "Power" => values.0 = param.1.as_bool().unwrap(),
+            "Hue" => values.1 = param.1.as_u64().unwrap() as u32,
+            "Saturation" => values.2 = param.1.as_u64().unwrap() as u32,
+            "Brightness" => values.3 = param.1.as_u64().unwrap() as u32,
             _ => {}
         }
     }
 
     #[cfg(target_os = "espidf")]
-    esp::update_led_state(&current_values);
+    esp::update_led_state(&values);
     rainmaker::report_params(DEVICE_NAME, params);
 }
 
