@@ -28,6 +28,7 @@ use quick_protobuf::{MessageWrite, Writer};
 pub use rainmaker_components as components;
 use rainmaker_components::{
     mqtt::ReceivedMessage,
+    persistent_storage::NvsPartition,
     wifi_prov::{WiFiProvTransportTrait, WifiProvMgr},
 };
 use serde_json::{json, Value};
@@ -46,10 +47,16 @@ use std::{env, fs, path::Path};
 pub(crate) type WrappedInArcMutex<T> = Arc<Mutex<T>>;
 
 /// A struct for RainMaker Agent.
-#[derive(Debug)]
 pub struct Rainmaker {
     node: Option<Arc<node::Node>>,
     node_id: String,
+    nvs_partition: NvsPartition,
+}
+
+impl std::fmt::Debug for Rainmaker {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Ok(())
+    }
 }
 
 static mut RAINMAKER: OnceLock<Rainmaker> = OnceLock::new();
@@ -77,7 +84,7 @@ impl Rainmaker {
     ///             ./rainmaker.py claim --mac <MAC addr> /dev/null
     ///         ```
     ///     3. Set the "RMAKER_CLAIMDATA_PATH" environment variable to the folder containing the Node X509 certificate and key (usually stored at ```/home/<user>/.espressif/rainmaker/claim_data/<acc_id>/<mac_addr>```)
-    pub fn init() -> Result<&'static mut Self, RmakerError> {
+    pub fn init(nvs_partition: NvsPartition) -> Result<&'static mut Self, RmakerError> {
         #[cfg(target_os = "linux")]
         Self::linux_init_claimdata();
 
@@ -91,6 +98,7 @@ impl Rainmaker {
                 .set(Self {
                     node: None,
                     node_id,
+                    nvs_partition,
                 })
                 .unwrap();
         }
@@ -137,7 +145,8 @@ impl Rainmaker {
                     remote_params_callback(msg, &node)
                 })?;
 
-                let rmaker_ota = RmakerOta::new(self.node_id.clone()).unwrap();
+                let rmaker_ota =
+                    RmakerOta::new(self.node_id.clone(), self.nvs_partition.clone()).unwrap();
                 rmaker_ota.manage_rollback().unwrap();
 
                 rmaker_mqtt::subscribe(&otaurl_topic, move |msg| {
