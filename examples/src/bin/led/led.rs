@@ -170,7 +170,9 @@ pub fn main() -> Result<()> {
     // should be done before Rainmaker::init()
     factory::init(factory_partition)?;
 
-    let rmaker = Rainmaker::init()?;
+    let nvs_partition = NvsPartition::new("nvs")?;
+
+    let rmaker = Rainmaker::init(nvs_partition.clone())?;
     let mut node = Node::new(rmaker.get_node_id().to_string());
     node.set_info(rainmaker::node::Info {
         name: "LED Example Node".to_string(),
@@ -185,7 +187,7 @@ pub fn main() -> Result<()> {
 
     // Declare it here since we want wifi to be connected after connect_wifi returns
     let wifi_arc_mutex = Arc::new(Mutex::new(WifiMgr::new()?));
-    connect_wifi(rmaker, wifi_arc_mutex.clone())?;
+    connect_wifi(rmaker, wifi_arc_mutex.clone(), nvs_partition)?;
 
     log::info!("WiFi connected successfully");
 

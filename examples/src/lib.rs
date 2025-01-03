@@ -23,9 +23,8 @@ pub fn initializse_logger() {
 pub fn connect_wifi(
     rmaker: &Rainmaker,
     wifi_arc_mutex: Arc<Mutex<WifiMgr<'static>>>,
+    nvs_partition: NvsPartition,
 ) -> Result<()> {
-    let nvs_partition = NvsPartition::new("nvs")?;
-
     let prov_config = WifiProvBleConfig {
         service_name: String::from("PROV_SERVICE"),
         ..Default::default()
