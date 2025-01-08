@@ -13,6 +13,7 @@ use esp_idf_svc::{
         Method as HttpMethod,
     },
     ota::{EspOta, SlotState},
+    sys::esp_crt_bundle_attach,
 };
 use rainmaker_components::{
     mqtt::ReceivedMessage,
@@ -64,6 +65,8 @@ impl RmakerOta {
         let conn = EspHttpConnection::new(&Configuration {
             buffer_size: Some(1536),
             buffer_size_tx: Some(1536),
+            use_global_ca_store: true,
+            crt_bundle_attach: Some(esp_crt_bundle_attach),
             ..Default::default()
         })?;
         let mut client = HttpClient::wrap(conn);
@@ -162,7 +165,7 @@ impl RmakerOta {
     ) -> anyhow::Result<()> {
         let node_id = self.node_id.clone();
         match ota.get_running_slot()?.state {
-            SlotState::Valid => {
+            SlotState::Valid | SlotState::Unknown => {
                 RmakerOta::report_status(
                     &node_id,
                     &ota_job_id,
@@ -227,6 +230,7 @@ impl RmakerOta {
 
 pub(crate) fn otafetch_callback(msg: ReceivedMessage, ota: &RmakerOta) {
     let ota_info: Value = serde_json::from_str(&String::from_utf8(msg.payload).unwrap()).unwrap();
+    log::info!("Received OTA: {:?}", ota_info);
 
     #[allow(unused_variables)]
     let ota_url = ota_info
