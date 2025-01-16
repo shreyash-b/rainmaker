@@ -24,7 +24,7 @@ use serde_json::{json, Value};
 
 use crate::{rmaker_mqtt, OTASTATUS_TOPIC_SUFFIX};
 
-const OTA_ROLLBACK_CHECK_DURATION: u64 = 10000; // millis
+const OTA_ROLLBACK_CHECK_DURATION: u64 = 90000; // millis
 const HTTPS_OTA_BUFFER_LEN: usize = 2048; // bytes
 
 #[derive(Serialize, Debug)]

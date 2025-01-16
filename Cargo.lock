@@ -1663,7 +1663,7 @@ dependencies = [
 [[package]]
 name = "rainmaker-components"
 version = "0.1.0"
-source = "git+https://github.com/rainmaker-rs/components?branch=mqtt_buffer#c2a6d7c79bd72a712a5fb1eefbf6b703eeb1a078"
+source = "git+https://github.com/rainmaker-rs/components?branch=mqtt_buffer#214272a507189791d4e76ad2cfb3fbfe12a13f70"
 dependencies = [
  "aes",
  "anyhow",
