@@ -1,6 +1,9 @@
 [package]
 name = "rainmaker"
-authors = ["Shreyash Bubane <bubaneshreyash3@gmail.com>", "Chinmay Dixit <chinmaydixit2303@gmail.com"]
+authors = [
+  "Shreyash Bubane <bubaneshreyash3@gmail.com>",
+  "Chinmay Dixit <chinmaydixit2303@gmail.com",
+]
 version = "0.1.1"
 edition = "2021"
 license = "Apache-2.0 OR MIT"
@@ -16,7 +19,8 @@ keywords = ["iot", "linux", "esp", "home-automation"]
 
 [dependencies]
 anyhow = { version = "1.0.79", default-features = false }
-rainmaker-components = { version = "0.1.0" }
+# rainmaker-components = { version = "0.1.0" }
+rainmaker-components = { path = "../../components" }
 log = { version = "0.4.20", default-features = false }
 serde = { version = "1.0.196", features = ["derive"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
@@ -27,4 +31,6 @@ thiserror = "2.0.9"
 simple_logger = "4.3.3"
 
 [target.'cfg(target_os="espidf")'.dependencies]
-esp-idf-svc = { version = "0.49.1", default-features = false, features = ["alloc"] }
+esp-idf-svc = { version = "0.49.1", default-features = false, features = [
+  "alloc",
+] }

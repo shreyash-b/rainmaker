@@ -11,6 +11,8 @@ pub mod error;
 pub mod factory;
 pub mod node;
 pub mod param;
+
+pub(crate) mod local_ctrl;
 pub(crate) mod proto;
 pub(crate) mod utils;
 
@@ -19,12 +21,14 @@ mod rmaker_mqtt;
 
 use constants::*;
 use error::RmakerError;
+use local_ctrl::RmakerLocalCtrl;
 use node::Node;
 use proto::esp_rmaker_user_mapping::*;
 use quick_protobuf::{MessageWrite, Writer};
 // expose rainmaker_components crate for use in downstream crates
 pub use rainmaker_components as components;
 use rainmaker_components::{
+    local_ctrl::LocalControl,
     mqtt::ReceivedMessage,
     wifi_prov::{WiFiProvTransportTrait, WifiProvMgr},
 };
@@ -44,10 +48,10 @@ use std::{env, fs, path::Path};
 pub(crate) type WrappedInArcMutex<T> = Arc<Mutex<T>>;
 
 /// A struct for RainMaker Agent.
-#[derive(Debug)]
 pub struct Rainmaker {
     node: Option<Arc<node::Node>>,
     node_id: String,
+    local_ctrl: Option<RmakerLocalCtrl>,
 }
 
 static mut RAINMAKER: OnceLock<Rainmaker> = OnceLock::new();
@@ -82,15 +86,15 @@ impl Rainmaker {
         if unsafe { RAINMAKER.get().is_some() } {
             return Err(RmakerError::AlreadyInitialized);
         }
+
         unsafe {
             let mut buff = [0u8; 32];
             let node_id = factory::get_node_id(&mut buff)?;
-            RAINMAKER
-                .set(Self {
-                    node: None,
-                    node_id,
-                })
-                .unwrap();
+            RAINMAKER.set(Self {
+                node: None,
+                node_id,
+                local_ctrl: None,
+            });
         }
         Ok(unsafe { RAINMAKER.get_mut().unwrap() })
     }
@@ -128,10 +132,15 @@ impl Rainmaker {
                 log::info!("publishing initial params: {}", init_params);
                 rmaker_mqtt::publish(&params_local_init_topic, init_params.into())?;
                 let node = node.clone();
+                let node_2 = node.clone();
                 thread::sleep(Duration::from_secs(1)); // wait for connection
                 rmaker_mqtt::subscribe(&remote_param_topic, move |msg| {
                     remote_params_callback(msg, &node)
-                })?
+                })?;
+
+                let local_ctrl = RmakerLocalCtrl::new(node_2, node_id);
+
+                self.local_ctrl = Some(local_ctrl);
             }
             None => panic!("error while starting: node not registered"),
         }

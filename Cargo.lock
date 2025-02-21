@@ -1633,11 +1633,11 @@ dependencies = [
 [[package]]
 name = "rainmaker-components"
 version = "0.1.0"
-source = "git+https://github.com/rainmaker-rs/rainmaker-components#acbbb72159b4d4eeea3b6f7ea1e0958dd0f9fefc"
 dependencies = [
  "aes",
  "anyhow",
  "bluer",
+ "cc",
  "ctr",
  "ed25519-compact",
  "embedded-svc",
