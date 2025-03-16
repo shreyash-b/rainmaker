@@ -34,3 +34,14 @@ simple_logger = "4.3.3"
 esp-idf-svc = { version = "0.49.1", default-features = false, features = [
   "alloc",
 ] }
+
+
+[[package.metadata.esp-idf-sys.extra-components]]
+remote_component = { name = "espressif/mdns", version = "1.7" }
+bindings_header = "mdns_bindings.h"
+bindings_module = "mdns"
+
+[build-dependencies]
+embuild = { version = "0.31.4", default-features = false, features = [
+    "espidf",
+] }

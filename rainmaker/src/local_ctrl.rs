@@ -30,21 +30,18 @@ impl RmakerLocalCtrl {
         );
         local_ctrl.add_property("params".to_string(), LOCAL_CTRL_TYPE_PARAM, 0);
 
-        #[cfg(target_os = "linux")]
-        {
-            advertise_mdns(node_id);
-            RmakerLocalCtrl { local_ctrl }
-        }
-
         #[cfg(target_os = "espidf")]
-        {
-            RmakerLocalCtrl { local_ctrl }
-        }
+        advertise_mdns_esp(node_id);
+
+        #[cfg(target_os = "linux")]
+        advertise_mdns_linux(node_id);
+
+        RmakerLocalCtrl { local_ctrl }
     }
 }
 
 #[cfg(target_os = "linux")]
-fn advertise_mdns(node_id: &str) {
+fn advertise_mdns_linux(node_id: &str) {
     let mut command = Command::new("avahi-publish");
     command.args([
         "--service",
@@ -59,6 +56,57 @@ fn advertise_mdns(node_id: &str) {
 
     // TODO: check if avertisement is properly started and store this child handle somewhere
     let _child = command.spawn();
+}
+
+#[cfg(target_os = "espidf")]
+fn advertise_mdns_esp(node_id: &str) {
+    use esp_idf_svc::sys::mdns::*;
+    use std::ffi::{CStr, CString};
+
+    unsafe {
+        let version_ep_key = CString::new("version_endpoint").unwrap();
+        let version_ep_value = CString::new("/esp_local_ctrl/version").unwrap();
+
+        let session_ep_key = CString::new("session_endpoint").unwrap();
+        let session_ep_value = CString::new("/esp_local_ctrl/session").unwrap();
+
+        let control_ep_key = CString::new("control_endpoint").unwrap();
+        let control_ep_value = CString::new("/esp_local_ctrl/control").unwrap();
+
+        let node_id_key = CString::new("node_id").unwrap();
+        let node_id_value = CString::new(node_id).unwrap();
+
+        mdns_init();
+        mdns_hostname_set(node_id_value.as_ptr());
+
+        let mut records = [
+            mdns_txt_item_t {
+                key: version_ep_key.as_ptr(),
+                value: version_ep_value.as_ptr(),
+            },
+            mdns_txt_item_t {
+                key: session_ep_key.as_ptr(),
+                value: session_ep_value.as_ptr(),
+            },
+            mdns_txt_item_t {
+                key: control_ep_key.as_ptr(),
+                value: control_ep_value.as_ptr(),
+            },
+            mdns_txt_item_t {
+                key: node_id_key.as_ptr(),
+                value: node_id_value.as_ptr(),
+            },
+        ];
+
+        mdns_service_add(
+            node_id_value.as_ptr(),
+            CString::new("_esp_local_ctrl").unwrap().as_ptr(),
+            CString::new("_tcp").unwrap().as_ptr(),
+            8080,
+            records.as_mut_ptr(),
+            records.len(),
+        );
+    }
 }
 
 fn local_ctrl_get_val(name: &str, _prop_type: u32, _flags: u32, node: &Arc<Node>) -> Vec<u8> {
