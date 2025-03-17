@@ -147,7 +147,11 @@ impl Rainmaker {
 
                 let local_ctrl = RmakerLocalCtrl::new(node_2, node_id);
 
-                self.local_ctrl = Some(local_ctrl);
+                self.local_ctrl = if let Ok(local_ctrl) = local_ctrl {
+                    Some(local_ctrl)
+                } else {
+                    None
+                };
             }
             None => panic!("error while starting: node not registered"),
         }
