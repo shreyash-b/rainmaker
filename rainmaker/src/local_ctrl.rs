@@ -1,7 +1,9 @@
-use std::{collections::HashMap, process::Command, sync::Arc};
-
 use rainmaker_components::local_ctrl::LocalControl;
 use serde_json::Value;
+use std::{collections::HashMap, sync::Arc};
+
+#[cfg(target_os = "linux")]
+use std::process::Command;
 
 use crate::node::Node;
 
@@ -11,7 +13,8 @@ const LOCAL_CTRL_TYPE_PARAM: u32 = 2;
 const LOCAL_CTRL_FLAG_READONLY: u32 = 1;
 
 pub struct RmakerLocalCtrl {
-    local_ctrl: LocalControl,
+    // not used once initialized, but don't want it to be dropped
+    _local_ctrl: LocalControl,
 }
 
 impl RmakerLocalCtrl {
@@ -36,7 +39,9 @@ impl RmakerLocalCtrl {
         #[cfg(target_os = "linux")]
         advertise_mdns_linux(node_id);
 
-        RmakerLocalCtrl { local_ctrl }
+        RmakerLocalCtrl {
+            _local_ctrl: local_ctrl,
+        }
     }
 }
 
@@ -60,8 +65,8 @@ fn advertise_mdns_linux(node_id: &str) {
 
 #[cfg(target_os = "espidf")]
 fn advertise_mdns_esp(node_id: &str) {
-    use esp_idf_svc::sys::mdns::*;
-    use std::ffi::{CStr, CString};
+    use esp_idf_svc::sys::mdns::{mdns_hostname_set, mdns_init, mdns_service_add, mdns_txt_item_t};
+    use std::ffi::CString;
 
     unsafe {
         let version_ep_key = CString::new("version_endpoint").unwrap();

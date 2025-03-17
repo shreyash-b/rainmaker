@@ -21,6 +21,8 @@ pub enum RmakerError {
     Mqtt(#[from] RmakerMqttError),
     #[error("factory partition error")]
     Factory(#[from] RmakerFactoryError),
+    #[error("other error")]
+    UnknownError,
 }
 
 #[derive(Error, Debug)]

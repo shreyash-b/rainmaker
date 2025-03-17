@@ -1,4 +1,6 @@
 #![feature(trait_alias)]
+// due to mutable static not being alloed by default in latest rustc. until another approach is found
+#![allow(static_mut_refs)]
 
 //! # Rust Implementation of ESP Rainmaker.
 //!
@@ -28,7 +30,6 @@ use quick_protobuf::{MessageWrite, Writer};
 // expose rainmaker_components crate for use in downstream crates
 pub use rainmaker_components as components;
 use rainmaker_components::{
-    local_ctrl::LocalControl,
     mqtt::ReceivedMessage,
     wifi_prov::{WiFiProvTransportTrait, WifiProvMgr},
 };
@@ -90,11 +91,17 @@ impl Rainmaker {
         unsafe {
             let mut buff = [0u8; 32];
             let node_id = factory::get_node_id(&mut buff)?;
-            RAINMAKER.set(Self {
-                node: None,
-                node_id,
-                local_ctrl: None,
-            });
+            if RAINMAKER
+                .set(Self {
+                    node: None,
+                    node_id,
+                    local_ctrl: None,
+                })
+                .is_err()
+            {
+                log::error!("Failed to initialize RainMaker");
+                return Err(RmakerError::UnknownError);
+            };
         }
         Ok(unsafe { RAINMAKER.get_mut().unwrap() })
     }
