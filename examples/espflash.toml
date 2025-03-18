@@ -1,1 +1,2 @@
 partition_table = "partitions.csv"
+partition_table_offset = 0x8000

@@ -1,6 +1,5 @@
-/target
-/ignored
-/.idea
-/.vscode
-/espflash.toml
-/.embuild
+**/target
+**/ignored
+**/.idea
+**/.vscode
+**/.embuild

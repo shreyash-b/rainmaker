@@ -41,9 +41,9 @@ espflash erase-flash
 ```
 
 2. Make sure claiming is performed for your MCU(mentioned in [prerequisites](/docs/PREREQUISITES.md)) 
-3. Build and run the project
-
+3. Build and run the project **from examples directory**
 ```bash
+cd examples/
 cargo run --target <mcu-target> --bin <name of example>
 ```
 List of targets for various chipsets:
@@ -72,11 +72,12 @@ The claimdata is stored in `/home/<user>/.espressif/rainmaker/claim_data/<accoun
 3. Run
 
 ```bash
+cd examples/
 cargo run --target x86_64-unknown-linux-gnu --bin <example>
 ```
 OR
 ```bash
-cargo run_linux --bin <example>
+cargo run_linux <example>
 ```
 
 Once the example is running, open the rainmaker mobile application and follow on-screen instructions for adding device
