@@ -40,6 +40,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::{factory, param::Param, rmaker_mqtt, NODE_PARAMS_LOCAL_TOPIC_SUFFIX};
+use crate::param::ParamValue;
 
 pub(crate) type DeviceCbType =
     Box<dyn for<'a> Fn(HashMap<String, Value>, DeviceHandle<'a>) + Send + Sync + 'static>;
@@ -162,6 +163,19 @@ impl DeviceHandle<'_> {
         let updated_params = json!({
             self.name: params
         });
+
+        for param in self.params{
+            if let Some(value)  = params.get(param.name()){
+                let new_val = match param.value(){
+                    ParamValue::String(_) => ParamValue::String(value.to_string()),
+                    ParamValue::Bool(_) => ParamValue::Bool(value.as_bool().unwrap()),
+                    ParamValue::Integer(_) => ParamValue::Integer(value.as_i64().unwrap()),
+                    ParamValue::Float(_) => ParamValue::Float(value.as_f64().unwrap()),
+                };
+
+                param.set_value(new_val);
+            }
+        }
 
         rmaker_mqtt::publish(
             self.local_params_topic,

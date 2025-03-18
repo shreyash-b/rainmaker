@@ -125,22 +125,22 @@ fn led_cb(params: HashMap<String, Value>, device_handle: DeviceHandle) {
         match param.name() {
             "Power" => {
                 if let ParamValue::Bool(power) = param.value() {
-                    values.0 = *power
+                    values.0 = power
                 }
             }
             "Hue" => {
                 if let ParamValue::Integer(hue) = param.value() {
-                    values.1 = *hue as u32
+                    values.1 = hue as u32
                 }
             }
             "Saturation" => {
                 if let ParamValue::Integer(sat) = param.value() {
-                    values.2 = *sat as u32
+                    values.2 = sat as u32
                 }
             }
             "Brightness" => {
                 if let ParamValue::Integer(brightness) = param.value() {
-                    values.3 = *brightness as u32
+                    values.3 = brightness as u32
                 }
             }
             _ => {}

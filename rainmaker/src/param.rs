@@ -7,6 +7,7 @@
 use serde::Serialize;
 use serde_json::{Number, Value};
 use std::collections::HashSet;
+use std::sync::Mutex;
 
 #[derive(Debug, Serialize)]
 pub struct Param {
@@ -17,7 +18,7 @@ pub struct Param {
     #[serde(skip_serializing_if = "Option::is_none")]
     bounds: Option<ParamBounds>,
     #[serde(rename = "data_type")]
-    value: ParamValue,
+    value: Mutex<ParamValue>,
 }
 
 /// Set of access mode parameter.
@@ -173,7 +174,7 @@ impl Param {
     ) -> Param {
         Param {
             name: name.to_owned(),
-            value: initial_state,
+            value: Mutex::new(initial_state),
             param_type,
             properties,
             ui_type,
@@ -187,8 +188,12 @@ impl Param {
     }
 
     /// Returns current state of parameter.
-    pub fn value(&self) -> &ParamValue {
-        &self.value
+    pub fn value(&self) -> ParamValue {
+        self.value.lock().unwrap().clone()
+    }
+
+    pub fn set_value(&self, value: ParamValue) {
+        *self.value.lock().unwrap() = value;
     }
 
     /// Assigns minimum and maximum value to a parameter.
