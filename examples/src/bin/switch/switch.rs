@@ -2,6 +2,7 @@ use anyhow::Result;
 use examples::{connect_wifi, initializse_logger};
 use rainmaker::components::persistent_storage::NvsPartition;
 use rainmaker::components::wifi::WifiMgr;
+use rainmaker::device::DeviceHandle;
 use rainmaker::{
     device::{Device, DeviceType},
     factory,
@@ -26,10 +27,10 @@ fn create_switch_device(device_name: &str) -> Device {
     switch_dev
 }
 
-fn switch_cb(params: HashMap<String, Value>, _device : &Device) {
+fn switch_cb(params: HashMap<String, Value>, device_handle: DeviceHandle) {
     log::info!("Received update: {:?}", params);
     log::info!("Reporting: {:?}", params);
-    rainmaker::report_params("Switch", params);
+    device_handle.update_and_report(params);
 }
 
 fn main() -> Result<()> {

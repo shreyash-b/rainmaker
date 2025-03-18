@@ -277,28 +277,3 @@ fn cloud_user_assoc_callback(_ep: &str, data: &[u8], node_id: &str) -> Vec<u8> {
 
     out_vec
 }
-
-/// Reports parameters values of devices to the RainMaker cloud over MQTT.
-///
-/// Appropriate Device Name and a map of parameters(name: value) must be provided.
-///
-/// Example (Can be used in a device callback function)
-/// ```
-/// fn device_cb(params: HashMaps<String, Value>)
-/// {
-///     log::info!("Received update: {:?}", params);
-///     log::info!("Reporting: {:?}", params);
-///     rainmaker::report_params("DeviceName", params);
-/// }
-/// ```
-pub fn report_params(device_name: &str, params: HashMap<String, Value>) {
-    let updated_params = json!({
-        device_name: params
-    });
-
-    // TODO: cache this value somewhere?
-    let mut buff = [0u8; 32];
-    let node_id = factory::get_node_id(&mut buff).unwrap();
-    let local_params_topic = format!("node/{}/{}", node_id, NODE_PARAMS_LOCAL_TOPIC_SUFFIX);
-    rmaker_mqtt::publish(&local_params_topic, updated_params.to_string().into_bytes()).unwrap();
-}

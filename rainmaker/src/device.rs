@@ -18,13 +18,11 @@
 //!
 //! A callback needed to be set for every device in order to report updated values of parameters.
 //!
-//! For the reporting purpose, the function [report_params] can be used.
-//!
 //! Example for device callback:
 //! ```rust
-//! fn device_callback(params: HashMap<String, Value>){
+//! fn device_callback(params: HashMap<String, Value>, devcie_handle: DeviceHandle){
 //!     /* Write code for logging the received and reported values */
-//!     rainmaker::report_params(device_name: "DeviceName", params);
+//!     device_handle.update_and_report(params); // for reporting that params values were successfully updated
 //! }
 //! ```
 //!
@@ -39,11 +37,12 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 
-use crate::param::Param;
+use crate::{factory, param::Param, rmaker_mqtt, NODE_PARAMS_LOCAL_TOPIC_SUFFIX};
 
-pub(crate) type DeviceCbType = Box<dyn Fn(HashMap<String, Value>, &Device) + Send + Sync + 'static>;
+pub(crate) type DeviceCbType =
+    Box<dyn for<'a> Fn(HashMap<String, Value>, DeviceHandle<'a>) + Send + Sync + 'static>;
 
 #[derive(Serialize)]
 pub struct Device {
@@ -57,6 +56,14 @@ pub struct Device {
     params: Vec<Param>,
     #[serde(skip_serializing)]
     callback: Option<DeviceCbType>,
+    #[serde(skip_serializing)]
+    local_params_topic: String,
+}
+
+pub struct DeviceHandle<'a> {
+    pub params: &'a [Param],
+    pub name: &'a str,
+    local_params_topic: &'a str,
 }
 
 impl Debug for Device {
@@ -74,6 +81,10 @@ impl Debug for Device {
 impl Device {
     /// This function creates an instance of device.
     pub fn new(name: &str, device_type: DeviceType) -> Self {
+        let mut buff = [0u8; 32];
+        let node_id = factory::get_node_id(&mut buff).unwrap();
+        let local_params_topic = format!("node/{}/{}", node_id, NODE_PARAMS_LOCAL_TOPIC_SUFFIX);
+
         Self {
             name: name.to_owned(),
             device_type,
@@ -81,6 +92,7 @@ impl Device {
             attributes: Default::default(),
             params: vec![],
             callback: None,
+            local_params_topic,
         }
     }
 
@@ -122,7 +134,40 @@ impl Device {
             return;
         };
 
-        cb(params, self);
+        let handle = DeviceHandle {
+            params: &self.params,
+            name: &self.name,
+            local_params_topic: &self.local_params_topic,
+        };
+
+        cb(params, handle);
+    }
+}
+
+impl DeviceHandle<'_> {
+    /// Reports parameters values of devices to the RainMaker cloud over MQTT.
+    ///
+    /// Appropriate parameters(name: value) must be provided.
+    ///
+    /// Example (Can be used in a device callback function)
+    /// ```
+    /// fn device_cb(params: HashMaps<String, Value>, devcie_handle: DeviceHandle)
+    /// {
+    ///     log::info!("Received update: {:?}", params);
+    ///     log::info!("Reporting: {:?}", params);
+    ///     devcie_handle.update_and_report(params);
+    /// }
+    /// ```
+    pub fn update_and_report(&self, params: HashMap<String, Value>) {
+        let updated_params = json!({
+            self.name: params
+        });
+
+        rmaker_mqtt::publish(
+            self.local_params_topic,
+            updated_params.to_string().into_bytes(),
+        )
+        .unwrap();
     }
 }
 

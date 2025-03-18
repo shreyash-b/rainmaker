@@ -2,6 +2,7 @@ use anyhow::Result;
 use examples::{connect_wifi, initializse_logger};
 use rainmaker::components::persistent_storage::NvsPartition;
 use rainmaker::components::wifi::WifiMgr;
+use rainmaker::device::DeviceHandle;
 use rainmaker::{
     factory,
     param::ParamValue
@@ -114,10 +115,10 @@ fn init_led_device() -> Device {
     led_device
 }
 
-fn led_cb(params: HashMap<String, Value>, device: &Device) {
+fn led_cb(params: HashMap<String, Value>, device_handle: DeviceHandle) {
     log::info!("Received update: {:?}", params);
 
-    let current_params = device.params();
+    let current_params = device_handle.params;
     let mut values = DEFAULT_LED_STATE;
 
     for param in current_params {
@@ -158,7 +159,8 @@ fn led_cb(params: HashMap<String, Value>, device: &Device) {
 
     #[cfg(target_os = "espidf")]
     esp::update_led_state(&values);
-    rainmaker::report_params(DEVICE_NAME, params);
+    //rainmaker::report_params(DEVICE_NAME, params);
+    device_handle.update_and_report(params);
 }
 
 pub fn main() -> Result<()> {
