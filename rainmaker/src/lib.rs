@@ -26,7 +26,6 @@ use constants::*;
 use error::RmakerError;
 use local_ctrl::RmakerLocalCtrl;
 use node::Node;
-use ota::RmakerOta;
 use proto::esp_rmaker_user_mapping::*;
 use quick_protobuf::{MessageWrite, Writer};
 // expose rainmaker_components crate for use in downstream crates
@@ -45,7 +44,7 @@ use std::{
 };
 
 #[cfg(target_os = "linux")]
-use rainmaker_components::persistent_storage::{Nvs, NvsPartition};
+use rainmaker_components::persistent_storage::Nvs;
 #[cfg(target_os = "linux")]
 use std::{env, fs, path::Path};
 
@@ -152,20 +151,23 @@ impl Rainmaker {
                     remote_params_callback(msg, &node)
                 })?;
 
-                let rmaker_ota =
-                    RmakerOta::new(self.node_id.clone(), self.nvs_partition.clone()).unwrap();
-                rmaker_ota.manage_rollback().unwrap();
+                #[cfg(target_os = "espidf")]
+                {
+                    let rmaker_ota =
+                        RmakerOta::new(self.node_id.clone(), self.nvs_partition.clone()).unwrap();
+                    rmaker_ota.manage_rollback().unwrap();
 
-                rmaker_mqtt::subscribe(&otaurl_topic, move |msg| {
-                    ota::otafetch_callback(msg, &rmaker_ota)
-                })
-                .unwrap();
+                    rmaker_mqtt::subscribe(&otaurl_topic, move |msg| {
+                        ota::otafetch_callback(msg, &rmaker_ota)
+                    })
+                    .unwrap();
 
-                // fetch ota
-                rmaker_mqtt::publish(
-                    &otafetch_topic,
-                    format!("{{\"node_id\": \"{}\"}}", node_id).into_bytes(),
-                )?;
+                    // fetch ota
+                    rmaker_mqtt::publish(
+                        &otafetch_topic,
+                        format!("{{\"node_id\": \"{}\"}}", node_id).into_bytes(),
+                    )?;
+                }
 
                 let local_ctrl = RmakerLocalCtrl::new(node_2, node_id);
 
