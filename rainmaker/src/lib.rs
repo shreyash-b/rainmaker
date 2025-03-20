@@ -26,6 +26,7 @@ use constants::*;
 use error::RmakerError;
 use local_ctrl::RmakerLocalCtrl;
 use node::Node;
+use ota::RmakerOta;
 use proto::esp_rmaker_user_mapping::*;
 use quick_protobuf::{MessageWrite, Writer};
 // expose rainmaker_components crate for use in downstream crates
